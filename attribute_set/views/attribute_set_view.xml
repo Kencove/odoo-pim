@@ -35,7 +35,7 @@
         </field>
     </record>
     <record id="attribute_set_tree_view" model="ir.ui.view">
-        <field name="name">attribute.set.tree</field>
+        <field name="name">attribute.set.list</field>
         <field name="model">attribute.set</field>
         <field name="arch" type="xml">
             <list>

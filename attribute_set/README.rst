@@ -127,6 +127,7 @@ Contributors
 - Akretion Raphaël VALYI <raphael.valyi@akretion.com>
 - David Dufresne <david.dufresne@savoirfairelinux.com>
 - Denis Roussel <denis.roussel@acsone.eu>
+- Mohamed Alkobrosli <malkobrosly@kencove.com>
 
 Maintainers
 -----------

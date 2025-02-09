@@ -26,7 +26,7 @@ def transfer_field_to_modifiers(field, modifiers):
 
 
 # Don't deal with groups, it is done by check_group().
-# Need the context to evaluate the invisible attribute on list views.
+# Need the context to evaluate the invisible attribute on tree views.
 # For non-tree views, the context shouldn't be given.
 def transfer_node_to_modifiers(node, modifiers, context=None, in_tree_view=False):
     if node.get("attrs"):
@@ -47,7 +47,7 @@ def transfer_node_to_modifiers(node, modifiers, context=None, in_tree_view=False
         if node.get(a):
             v = bool(safe_eval(node.get(a), {"context": context or {}}))
             if in_tree_view and a == "invisible":
-                # Invisible in a list view has a specific meaning, make it a
+                # Invisible in a tree view has a specific meaning, make it a
                 # new key in the modifiers attribute.
                 modifiers["column_invisible"] = v
             elif v or (a not in modifiers or not isinstance(modifiers[a], list)):

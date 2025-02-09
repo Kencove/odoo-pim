@@ -14,14 +14,19 @@
                     nolabel="1"
                     required="1"
                 />
-                <group col="4" colspan="4" invisible="context.get('default_model_id')">
+                <group
+                    col="2"
+                    class="col-6"
+                    invisible="context.get('default_model_id')"
+                >
                     <!-- The field created by this Attribute will be related to the model given
                        by 'default_model_id' through the menu's context that led to this view -->
                     <field name="model_id" />
                 </group>
                 <separator invisible="nature == 'native'" />
-                <group col="4" colspan="4" invisible="nature == 'native'">
+                <group col="2" class="col-6" invisible="nature == 'native'">
                     <field name="field_description" required="nature == 'custom'" />
+                    <field name="help" />
                     <field
                         name="name"
                         readonly="create_date"
@@ -31,12 +36,12 @@
                     <field name="size" invisible="attribute_type != 'char'" />
                     <field
                         name="translate"
-                        invisible="attribute_type not in ('char', 'text')"
+                        invisible="attribute_type not in ['char', 'text']"
                     />
                     <field name="serialized" readonly="create_date" />
                 </group>
                 <separator />
-                <group col="4" colspan="4">
+                <group col="2" class="col-6">
                     <field
                         name="field_id"
                         string="Related native field"
@@ -51,10 +56,11 @@
                         domain="[('model_id', '=', model_id)]"
                     />
                     <field name="sequence" />
+                    <field name="allowed_attribute_set_ids" invisible="1" />
                     <field
                         name="attribute_set_ids"
                         widget="many2many_tags"
-                        domain="[('model_id', '=', model_id)]"
+                        domain="[('id', 'in', allowed_attribute_set_ids)]"
                         options="{'no_create': 1}"
                         invisible="context.get('from_attribute_set')"
                     />
@@ -63,7 +69,7 @@
                     <field name="create_date" invisible="1" />
                 </group>
                 <group
-                    invisible="attribute_type not in ('select', 'multiselect') or nature == 'native'"
+                    invisible="attribute_type not in ['select', 'multiselect'] or nature == 'native'"
                     col="4"
                     colspan="4"
                 >
@@ -74,25 +80,21 @@
                     >
                         <group colspan="2">
                             <field name="relation_model_id" readonly="create_date" />
-                            <field name="relation_model_name" invisible="1" />
+                            <field name="domain" invisible="relation_model_id" />
                         </group>
-                        <group invisible="not relation_model_id" colspan="4">
-                            <field
-                                name="domain"
-                                widget="domain"
-                                options="{'model': 'relation_model_name', 'in_dialog': true}"
-                                invisible="not relation_model_id"
-                            />
+                        <newline />
+                        <group colspan="2" invisible="relation_model_id">
                             <button
                                 name="button_add_options"
+                                invisible="domain not in [False, '[]']"
                                 type="object"
                                 string="Load Attribute Options"
                                 class="oe_highlight"
-                                colspan="2"
+                                colspan="1"
                             />
                         </group>
                     </group>
-                    <group col="4" colspan="4">
+                    <group colspan="4">
                         <field name="option_ids" string="Attribute Options" colspan="4">
                             <list editable="top">
                                 <field
@@ -103,7 +105,8 @@
                                 <field name="sequence" column_invisible="True" />
                                 <field
                                     name="name"
-                                    invisible="relation_model_id and not value_ref"
+                                    column_invisible="relation_model_id and value_ref in [False, '']"
+                                    groups="base.group_erp_manager"
                                 />
                             </list>
                         </field>
@@ -113,7 +116,7 @@
         </field>
     </record>
     <record id="attribute_attribute_tree_view" model="ir.ui.view">
-        <field name="name">attribute.attribute.tree</field>
+        <field name="name">attribute.attribute.list</field>
         <field name="model">attribute.attribute</field>
         <field name="arch" type="xml">
             <list>
@@ -154,7 +157,7 @@
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="view_attribute_attribute_search" />
         <field name="context">
-            {"search_default_attribute_group_id": id, "active_attribute_sort":
+            {"search_default_attribute_group_id": active_id, "active_attribute_sort":
             True}
         </field>
         <field name="help" />
