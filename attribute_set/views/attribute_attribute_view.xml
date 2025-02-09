@@ -154,7 +154,7 @@
         <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_attribute_attribute_search" />
         <field name="context">
-            {"search_default_attribute_group_id": id, "active_attribute_sort":
+            {"search_default_attribute_group_id": active_id, "active_attribute_sort":
             True}
         </field>
         <field name="help" />
