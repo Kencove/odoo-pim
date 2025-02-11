@@ -34,14 +34,14 @@ class BuildViewCase(TransactionCase):
         cls.demo = cls.env.ref("base.user_demo")
 
         # This user will have access to
-        cls.attribute_manager_user = cls.env["res.users"].create(
+        cls.attribute_manager_user = cls.env.ref("base.user_admin")
+        cls.attribute_manager_user.write(
             {
                 "name": "Attribute Manager",
                 "login": "attribute_manager",
                 "email": "attribute.manager@test.odoo.com",
             }
         )
-        cls.attribute_manager_user.groups_id |= cls.env.ref("base.group_erp_manager")
 
         cls.loader = FakeModelLoader(cls.env, cls.__module__)
         cls.loader.backup_registry()
@@ -344,18 +344,20 @@ class BuildViewCase(TransactionCase):
         )
 
     # TEST form views rendering
-    @users("demo")
+    @users("attribute_manager")
     def test_model_form(self):
         # Test attributes modifications through form
         self.assertFalse(self.partner.x_attr_3)
         with Form(
-            self.partner.with_user(self.demo).with_context(load_all_views=True)
+            self.partner.with_user(self.attribute_manager_user).with_context(
+                load_all_views=True
+            )
         ) as partner_form:
             partner_form.attribute_set_id = self.set_1
             partner_form.x_attr_3 = True
             partner_form.x_attr_select = self.attr_select_option
             partner_form.x_multi_attribute.add(self.multi_attribute.option_ids[0])
-        partner = partner_form.save().with_user(self.demo)
+        partner = partner_form.save().with_user(self.attribute_manager_user)
         self.assertTrue(partner.x_attr_3)
         self.assertTrue(partner.x_attr_select)
         # As options are Many2many, Form() is not able to render the sub form

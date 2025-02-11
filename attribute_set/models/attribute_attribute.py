@@ -10,9 +10,8 @@ import re
 
 from lxml import etree
 
-from odoo import Command, _, api, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
-from odoo.tools.safe_eval import safe_eval
 
 from ..utils.orm import setup_modifiers
 
@@ -83,10 +82,6 @@ class AttributeAttribute(models.Model):
         "ir.model", "Relational Model", ondelete="cascade"
     )
 
-    relation_model_name = fields.Char(
-        "Relational Model Name", related="relation_model_id.model"
-    )
-
     widget = fields.Char(help="Specify widget to add to the field on the views.")
 
     required_on_views = fields.Boolean(
@@ -101,6 +96,10 @@ class AttributeAttribute(models.Model):
         relation="rel_attribute_set",
         column1="attribute_id",
         column2="attribute_set_id",
+    )
+    allowed_attribute_set_ids = fields.Many2many(
+        comodel_name="attribute.set",
+        compute="_compute_allowed_attribute_set_ids",
     )
 
     attribute_group_id = fields.Many2one(
@@ -135,7 +134,7 @@ class AttributeAttribute(models.Model):
         Conditional invisibility based on its attribute sets.
         """
         self.ensure_one()
-        kwargs = {"name": "%s" % self.name}
+        kwargs = {"name": f"{self.name}"}
         kwargs["attrs"] = str(self._get_attrs())
         if self.widget:
             kwargs["widget"] = self.widget
@@ -159,7 +158,7 @@ class AttributeAttribute(models.Model):
                 else:
                     # Display only options linked to an existing object
                     ids = [op.value_ref.id for op in self.option_ids if op.value_ref]
-                    kwargs["domain"] = "[('id', 'in', %s)]" % ids
+                    kwargs["domain"] = f"[('id', 'in', {ids})]"
                 # Add color options if the attribute's Relational Model
                 # has a color field
                 relation_model_obj = self.env[self.relation_model_id.model]
@@ -168,8 +167,8 @@ class AttributeAttribute(models.Model):
             elif self.nature == "custom":
                 # Define field's domain and context with attribute's id to go along with
                 # Attribute Options search and creation
-                kwargs["domain"] = "[('attribute_id', '=', %s)]" % (self.id)
-                kwargs["context"] = "{'default_attribute_id': %s}" % (self.id)
+                kwargs["domain"] = f"[('attribute_id', '=', {self.id})]"
+                kwargs["context"] = f"{{'default_attribute_id': {self.id}}}"
             elif self.nature != "custom":
                 kwargs["context"] = self._get_native_field_context()
 
@@ -229,6 +228,18 @@ class AttributeAttribute(models.Model):
 
         return attribute_eview
 
+    def _get_attribute_set_allowed_model(self):
+        return self.model_id
+
+    @api.depends("model_id")
+    def _compute_allowed_attribute_set_ids(self):
+        AttributeSet = self.env["attribute.set"]
+        for record in self:
+            allowed_models = record._get_attribute_set_allowed_model()
+            record.allowed_attribute_set_ids = AttributeSet.search(
+                [("model_id", "in", allowed_models.ids)]
+            )
+
     @api.onchange("model_id")
     def onchange_model_id(self):
         return {"domain": {"field_id": [("model_id", "=", self.model_id.id)]}}
@@ -242,7 +253,7 @@ class AttributeAttribute(models.Model):
     def onchange_name(self):
         name = self.name
         if not name.startswith("x_"):
-            self.name = "x_%s" % name
+            self.name = f"x_{name}"
 
     @api.onchange("attribute_type")
     def onchange_attribute_type(self):
@@ -274,18 +285,22 @@ class AttributeAttribute(models.Model):
 
     def button_add_options(self):
         self.ensure_one()
-        values = self.env[self.relation_model_id.model].search(safe_eval(self.domain))
-        options = []
-        for value in values:
-            options.append(
-                Command.create(
-                    {
-                        "name": value.display_name,
-                        "value_ref": f"{value._name},{value.id}",
-                    }
-                )
-            )
-        self.option_ids = options
+        # Before adding another option delete the ones which are linked
+        # to a deleted object
+        for option in self.option_ids:
+            if not option.value_ref:
+                option.unlink()
+        # Then open the Options Wizard which will display an 'opt_ids' m2m field related
+        # to the 'relation_model_id' model
+        return {
+            "context": dict(self.env.context, attribute_id=self.id),
+            "name": _("Options Wizard"),
+            "view_type": "form",
+            "view_mode": "form",
+            "res_model": "attribute.option.wizard",
+            "type": "ir.actions.act_window",
+            "target": "new",
+        }
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -325,8 +340,9 @@ class AttributeAttribute(models.Model):
             elif attr_type == "multiselect":
                 vals["ttype"] = "many2many"
                 vals["relation"] = relation
-                # Specify the relation_table's name in case of m2m not serialized to
-                # avoid creating the same default relation_table name for any attribute
+                # Specify the relation_table's name in case of m2m not serialized
+                # to avoid creating the same default
+                # relation_table name for any attribute
                 # linked to the same attribute.option or relation_model_id's model.
                 if not vals.get("serialized"):
                     att_model_id = self.env["ir.model"].browse(vals["model_id"])
